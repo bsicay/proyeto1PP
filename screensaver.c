@@ -71,13 +71,13 @@ int main(int argc, char *args[]) {
     }
 
     Pokemon pokemon[num_pokemon];
-    const char *spritePaths[num_pokemon] = {
-        "pokemon1.png",
-        "pokemon1.png",
-        "pokemon1.png",
-        "pokemon1.png",
-        "pokemon1.png"
-    };
+    const char *spritePaths[num_pokemon];
+    spritePaths[0]= "pokemon1.png";
+    spritePaths[1]= "pokemon1.png";
+    spritePaths[2]= "pokemon1.png";
+    spritePaths[3]= "pokemon1.png";
+    spritePaths[4]= "pokemon1.png";
+
 
     // Inicializa cada Pokémon con una textura, posición y velocidad aleatoria
     for (int i = 0; i < num_pokemon; i++) {
