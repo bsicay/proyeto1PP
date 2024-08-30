@@ -3,13 +3,28 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
+#include <math.h>
+
+#define MIN_SPEED 4
+#define MAX_SPEED 8
+#define POKEBALL_SPEED 6
+#define ANGLE_ADJUSTMENT 0.2
 
 // Estructura para representar un Pokémon
 typedef struct {
     SDL_Texture *texture;
     SDL_Rect position;
-    int speed;
+    float speed;
+    float angle; // Ángulo de movimiento en radianes
+    int isCaught;
 } Pokemon;
+
+// Función para generar un color aleatorio
+void generateRandomBackgroundColor(Uint8 *r, Uint8 *g, Uint8 *b) {
+    *r = rand() % 256;
+    *g = rand() % 256;
+    *b = rand() % 256;
+}
 
 // Función para inicializar SDL
 int initSDL(SDL_Window **window, SDL_Renderer **renderer, int width, int height) {
@@ -47,21 +62,122 @@ SDL_Texture* loadTexture(const char *path, SDL_Renderer *renderer) {
     return newTexture;
 }
 
-// Función para mover un Pokémon a lo largo de la ruta
-void movePokemon(Pokemon *pokemon, int screen_width) {
-    pokemon->position.x += pokemon->speed;
-    if (pokemon->position.x > screen_width || pokemon->position.x < 0) {
-        pokemon->speed = -pokemon->speed; // Cambio de dirección
+// Función para mover un Pokémon en un ángulo
+void movePokemon(Pokemon *pokemon, int screen_width, int screen_height) {
+    // Calcula el nuevo desplazamiento
+    pokemon->position.x += (int)(pokemon->speed * cos(pokemon->angle));
+    pokemon->position.y += (int)(pokemon->speed * sin(pokemon->angle));
+
+    // Detecta colisiones con los bordes
+    if (pokemon->position.x <= 0) {
+        pokemon->position.x = 1; // Mover ligeramente hacia dentro de la pantalla
+        pokemon->angle = M_PI - pokemon->angle; // Rebote en el eje X
+    } else if (pokemon->position.x + pokemon->position.w >= screen_width) {
+        pokemon->position.x = screen_width - pokemon->position.w - 1;
+        pokemon->angle = M_PI - pokemon->angle;
     }
+
+    if (pokemon->position.y <= 0) {
+        pokemon->position.y = 1;
+        pokemon->angle = -pokemon->angle; // Rebote en el eje Y
+    } else if (pokemon->position.y + pokemon->position.h >= screen_height) {
+        pokemon->position.y = screen_height - pokemon->position.h - 1;
+        pokemon->angle = -pokemon->angle;
+    }
+
+    // Solo ajustar si el ángulo está cerca de los ejes (0, 90, 180, 270 grados)
+    if (fabs(fmod(pokemon->angle, M_PI / 2)) < 0.1) {
+        float random_adjustment = ((float)rand() / RAND_MAX) * ANGLE_ADJUSTMENT - (ANGLE_ADJUSTMENT / 2);
+        pokemon->angle += random_adjustment;
+    }
+
+    // Asegurar que el ángulo esté en el rango [0, 2π]
+    if (pokemon->angle < 0) {
+        pokemon->angle += 2 * M_PI;
+    } else if (pokemon->angle >= 2 * M_PI) {
+        pokemon->angle -= 2 * M_PI;
+    }
+
+    // Si la velocidad baja de MIN_SPEED, asignar una nueva velocidad aleatoria entre MIN_SPEED y MAX_SPEED
+    if (pokemon->speed < MIN_SPEED) {
+        pokemon->speed = (rand() % (MAX_SPEED - MIN_SPEED + 1)) + MIN_SPEED;
+    }
+}
+
+void movePokeball(Pokemon *pokeball, int screen_width, int screen_height) {
+    // Calcula el nuevo desplazamiento
+    pokeball->position.x += (int)(pokeball->speed * cos(pokeball->angle));
+    pokeball->position.y += (int)(pokeball->speed * sin(pokeball->angle));
+
+    // Detecta colisiones con los bordes
+    if (pokeball->position.x <= 0) {
+        pokeball->position.x = 1; // Mover ligeramente hacia dentro de la pantalla
+        pokeball->angle = M_PI - pokeball->angle; // Rebote en el eje X
+    } else if (pokeball->position.x + pokeball->position.w >= screen_width) {
+        pokeball->position.x = screen_width - pokeball->position.w - 1;
+        pokeball->angle = M_PI - pokeball->angle;
+    }
+
+    if (pokeball->position.y <= 0) {
+        pokeball->position.y = 1;
+        pokeball->angle = -pokeball->angle; // Rebote en el eje Y
+    } else if (pokeball->position.y + pokeball->position.h >= screen_height) {
+        pokeball->position.y = screen_height - pokeball->position.h - 1;
+        pokeball->angle = -pokeball->angle;
+    }
+
+    // Solo ajustar si el ángulo está cerca de los ejes (0, 90, 180, 270 grados)
+    if (fabs(fmod(pokeball->angle, M_PI / 2)) < 0.1) {
+        float random_adjustment = ((float)rand() / RAND_MAX) * ANGLE_ADJUSTMENT - (ANGLE_ADJUSTMENT / 2);
+        pokeball->angle += random_adjustment;
+    }
+
+    // Asegurar que el ángulo esté en el rango [0, 2π]
+    if (pokeball->angle < 0) {
+        pokeball->angle += 2 * M_PI;
+    } else if (pokeball->angle >= 2 * M_PI) {
+        pokeball->angle -= 2 * M_PI;
+    }
+}
+
+float generateRandomAngle() {
+    float angle;
+    do {
+        angle = (float)(rand() % 360) * (M_PI / 180.0); // Ángulo aleatorio en radianes
+    } while (fabs(fmod(angle, M_PI / 2)) < 0.1); // Evitar ángulos cercanos a 0, 90, 180, 270 grados
+    return angle;
+}
+
+// Función para detectar colisiones entre la pokebola y un Pokémon
+int checkCollision(Pokemon *pokeball, Pokemon *pokemon) {
+    return !(
+        pokeball->position.x + pokeball->position.w <= pokemon->position.x ||
+        pokeball->position.x >= pokemon->position.x + pokemon->position.w ||
+        pokeball->position.y + pokeball->position.h <= pokemon->position.y ||
+        pokeball->position.y >= pokemon->position.y + pokemon->position.h
+    );
 }
 
 // Función principal
 int main(int argc, char *args[]) {
     SDL_Window *window = NULL;
     SDL_Renderer *renderer = NULL;
-    const int screen_width = 640;
-    const int screen_height = 480;
-    const int num_pokemon = 5;
+    const int screen_width = 980;
+    const int screen_height = 720;
+    
+    // Verificar que se haya pasado un argumento para el número de pokemons
+    if (argc < 2) {
+        printf("Usage: %s <number_of_pokemons>\n", args[0]);
+        return -1;
+    }
+
+    // Convertir el argumento a un entero
+    int num_pokemon = atoi(args[1]);
+
+    if (num_pokemon <= 0) {
+        printf("Invalid number of pokemons. Must be a positive integer.\n");
+        return -1;
+    }
 
     srand(time(NULL));
 
@@ -69,30 +185,43 @@ int main(int argc, char *args[]) {
         printf("Failed to initialize SDL.\n");
         return -1;
     }
-
+    Uint8 bg_r = 0, bg_g = 0, bg_b = 0; 
     Pokemon pokemon[num_pokemon];
-    const char *spritePaths[num_pokemon];
-    spritePaths[0]= "pokemon1.png";
-    spritePaths[1]= "pokemon1.png";
-    spritePaths[2]= "pokemon1.png";
-    spritePaths[3]= "pokemon1.png";
-    spritePaths[4]= "pokemon1.png";
-
-
-    // Inicializa cada Pokémon con una textura, posición y velocidad aleatoria
+    char spritePath[31]; // cantidad de sprites de pokemons
+    
+    // Inicializa cada Pokémon con una textura, posición, velocidad y ángulo aleatorio
     for (int i = 0; i < num_pokemon; i++) {
-        pokemon[i].texture = loadTexture(spritePaths[i], renderer);
+        int random_number = (rand() % 30) + 1; // Número aleatorio entre 1 y 30
+        snprintf(spritePath, sizeof(spritePath), "pokemons/pokemon%d.png", random_number);
+        pokemon[i].texture = loadTexture(spritePath, renderer);
         if (pokemon[i].texture == NULL) {
             printf("Failed to load texture %d.\n", i);
             return -1;
         }
 
         pokemon[i].position.x = rand() % screen_width;
-        pokemon[i].position.y = (i * (screen_height / num_pokemon)) + (screen_height / (2 * num_pokemon));
-        pokemon[i].position.w = 50; // Ancho del sprite
-        pokemon[i].position.h = 50; // Alto del sprite
-        pokemon[i].speed = (rand() % 5) + 1; // Velocidad aleatoria entre 1 y 5
+        pokemon[i].position.y = rand() % screen_height;
+        pokemon[i].position.w = 60; // Ancho del sprite
+        pokemon[i].position.h = 60; // Alto del sprite
+        pokemon[i].speed = (rand() % (MAX_SPEED - MIN_SPEED + 1)) + MIN_SPEED; // Velocidad aleatoria entre el rango
+        pokemon[i].angle = generateRandomAngle(); // Ángulo aleatorio en radianes
+        pokemon[i].isCaught = 0;
     }
+
+    // Inicializar la pokebola
+    Pokemon pokeball;
+    pokeball.texture = loadTexture("pokeball.png", renderer);
+    if (pokeball.texture == NULL) {
+        printf("Failed to load pokeball texture.\n");
+        return -1;
+    }
+
+    pokeball.position.x = rand() % screen_width;
+    pokeball.position.y = rand() % screen_height;
+    pokeball.position.w = 50; // Ancho del sprite de la pokebola
+    pokeball.position.h = 50; // Alto del sprite de la pokebola
+    pokeball.speed = POKEBALL_SPEED; // Velocidad fija de la pokebola
+    pokeball.angle = generateRandomAngle();
 
     int quit = 0;
     SDL_Event e;
@@ -104,13 +233,23 @@ int main(int argc, char *args[]) {
             }
         }
 
-        SDL_SetRenderDrawColor(renderer, 0x00, 0x00, 0x00, 0xFF);
+        SDL_SetRenderDrawColor(renderer, bg_r, bg_g, bg_b, 0xFF);
         SDL_RenderClear(renderer);
+        // Mover y dibujar la pokebola
+        movePokeball(&pokeball, screen_width, screen_height);
 
         for (int i = 0; i < num_pokemon; i++) {
-            movePokemon(&pokemon[i], screen_width);
-            SDL_RenderCopy(renderer, pokemon[i].texture, NULL, &pokemon[i].position);
+            if (!pokemon[i].isCaught && checkCollision(&pokeball, &pokemon[i])) {
+                pokemon[i].isCaught = 1; // Atrapado
+                generateRandomBackgroundColor(&bg_r, &bg_g, &bg_b); 
+            }
+            movePokemon(&pokemon[i], screen_width, screen_height);
+            if (!pokemon[i].isCaught) {
+                SDL_RenderCopy(renderer, pokemon[i].texture, NULL, &pokemon[i].position);
+            }
         }
+        
+        SDL_RenderCopy(renderer, pokeball.texture, NULL, &pokeball.position);
 
         SDL_RenderPresent(renderer);
         SDL_Delay(16); // Aproximadamente 60 FPS
