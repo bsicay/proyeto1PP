@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <time.h>
 #include <math.h>
+#include <SDL2/SDL_ttf.h>
 
 #define MIN_SPEED 4
 #define MAX_SPEED 8
@@ -15,7 +16,7 @@ typedef struct {
     SDL_Texture *texture;
     SDL_Rect position;
     float speed;
-    float angle; // Ángulo de movimiento en radianes
+    float angle;
     int isCaught;
 } Pokemon;
 
@@ -185,6 +186,19 @@ int main(int argc, char *args[]) {
         printf("Failed to initialize SDL.\n");
         return -1;
     }
+
+    if (TTF_Init() == -1) {
+    printf("SDL_ttf could not initialize! TTF_Error: %s\n", TTF_GetError());
+    return -1;
+    }
+
+    TTF_Font *font = TTF_OpenFont("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 24); 
+    if (font == NULL) {
+        printf("Failed to load font! TTF_Error: %s\n", TTF_GetError());
+        return -1;
+    }
+
+
     Uint8 bg_r = 0, bg_g = 0, bg_b = 0; 
     Pokemon pokemon[num_pokemon];
     char spritePath[31]; // cantidad de sprites de pokemons
@@ -226,6 +240,10 @@ int main(int argc, char *args[]) {
     int quit = 0;
     SDL_Event e;
 
+    Uint32 start_time = SDL_GetTicks();
+    int frame_count = 0;
+    float fps = 0.0;
+
     while (!quit) {
         while (SDL_PollEvent(&e) != 0) {
             if (e.type == SDL_QUIT) {
@@ -251,6 +269,24 @@ int main(int argc, char *args[]) {
         
         SDL_RenderCopy(renderer, pokeball.texture, NULL, &pokeball.position);
 
+        frame_count++;
+        if (frame_count >= 100) {
+            Uint32 end_time = SDL_GetTicks();
+            fps = frame_count / ((end_time - start_time) / 1000.0f);
+            frame_count = 0;
+            start_time = end_time;
+        }
+
+        char fps_text[20];
+        sprintf(fps_text, "FPS: %.2f", fps);
+        SDL_Color textColor = {255, 255, 255, 0}; 
+        SDL_Surface* textSurface = TTF_RenderText_Solid(font, fps_text, textColor);
+        SDL_Texture* textTexture = SDL_CreateTextureFromSurface(renderer, textSurface);
+        SDL_Rect textRect = {10, 10, textSurface->w, textSurface->h};
+        SDL_RenderCopy(renderer, textTexture, NULL, &textRect);
+        SDL_FreeSurface(textSurface);
+        SDL_DestroyTexture(textTexture);
+
         SDL_RenderPresent(renderer);
         SDL_Delay(16); // Aproximadamente 60 FPS
     }
@@ -261,6 +297,8 @@ int main(int argc, char *args[]) {
 
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
+    TTF_CloseFont(font);
+    TTF_Quit();
     SDL_Quit();
 
     return 0;
