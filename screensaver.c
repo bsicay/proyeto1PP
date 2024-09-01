@@ -188,8 +188,8 @@ int main(int argc, char *args[]) {
     }
 
     if (TTF_Init() == -1) {
-    printf("SDL_ttf could not initialize! TTF_Error: %s\n", TTF_GetError());
-    return -1;
+        printf("SDL_ttf could not initialize! TTF_Error: %s\n", TTF_GetError());
+        return -1;
     }
 
     TTF_Font *font = TTF_OpenFont("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 24); 
@@ -197,7 +197,6 @@ int main(int argc, char *args[]) {
         printf("Failed to load font! TTF_Error: %s\n", TTF_GetError());
         return -1;
     }
-
 
     Uint8 bg_r = 0, bg_g = 0, bg_b = 0; 
     Pokemon pokemon[num_pokemon];
@@ -240,9 +239,15 @@ int main(int argc, char *args[]) {
     int quit = 0;
     SDL_Event e;
 
-    Uint32 start_time = SDL_GetTicks();
+    Uint64 start_time = SDL_GetPerformanceCounter();
+    Uint64 end_time;
+    double elapsed_ms;
+
     int frame_count = 0;
-    float fps = 0.0;
+    double fps = 0.0;
+
+    Uint64 total_time = 0;
+    int iterations_to_measure = 100;  // Puedes ajustar esto según sea necesario
 
     while (!quit) {
         while (SDL_PollEvent(&e) != 0) {
@@ -253,6 +258,9 @@ int main(int argc, char *args[]) {
 
         SDL_SetRenderDrawColor(renderer, bg_r, bg_g, bg_b, 0xFF);
         SDL_RenderClear(renderer);
+
+        Uint64 frame_start_time = SDL_GetPerformanceCounter();
+
         // Mover y dibujar la pokebola
         movePokeball(&pokeball, screen_width, screen_height);
 
@@ -269,13 +277,10 @@ int main(int argc, char *args[]) {
         
         SDL_RenderCopy(renderer, pokeball.texture, NULL, &pokeball.position);
 
-        frame_count++;
-        if (frame_count >= 100) {
-            Uint32 end_time = SDL_GetTicks();
-            fps = frame_count / ((end_time - start_time) / 1000.0f);
-            frame_count = 0;
-            start_time = end_time;
-        }
+        // Cálculo de FPS (ahora se realiza en cada frame)
+        end_time = SDL_GetPerformanceCounter();
+        fps = (double)SDL_GetPerformanceFrequency() / (end_time - start_time);
+        start_time = end_time;
 
         char fps_text[20];
         sprintf(fps_text, "FPS: %.2f", fps);
@@ -289,6 +294,18 @@ int main(int argc, char *args[]) {
 
         SDL_RenderPresent(renderer);
         SDL_Delay(16); // Aproximadamente 60 FPS
+
+        Uint64 frame_end_time = SDL_GetPerformanceCounter();
+        elapsed_ms = (double)((frame_end_time - frame_start_time) * 1000) / SDL_GetPerformanceFrequency();
+        total_time += (frame_end_time - frame_start_time);
+
+        frame_count++;
+        if (frame_count >= iterations_to_measure) {
+            double average_time = (double)(total_time * 1000) / (iterations_to_measure * SDL_GetPerformanceFrequency());
+            printf("Tiempo promedio de ejecución para %d iteraciones: %.2f ms\n", iterations_to_measure, average_time);
+            total_time = 0; // Reiniciar el tiempo total
+            frame_count = 0; // Reiniciar el contador de frames
+        }
     }
 
     for (int i = 0; i < num_pokemon; i++) {
