@@ -160,6 +160,26 @@ int checkCollision(Pokemon *pokeball, Pokemon *pokemon) {
     );
 }
 
+int checkPokemonCollision(Pokemon *p1, Pokemon *p2) {
+    return !(
+        p1->position.x + p1->position.w <= p2->position.x ||
+        p1->position.x >= p2->position.x + p2->position.w ||
+        p1->position.y + p1->position.h <= p2->position.y ||
+        p1->position.y >= p2->position.y + p2->position.h
+    );
+}
+
+void handlePokemonCollision(Pokemon *p1, Pokemon *p2) {
+    // Intercambiar sus ángulos para simular un rebote simple
+    float tempAngle = p1->angle;
+    p1->angle = p2->angle;
+    p2->angle = tempAngle;
+
+    // Opcionalmente, puedes agregar un pequeño ajuste aleatorio para evitar que se queden en la misma dirección
+    p1->angle += ((float)rand() / RAND_MAX - 0.5) * ANGLE_ADJUSTMENT;
+    p2->angle += ((float)rand() / RAND_MAX - 0.5) * ANGLE_ADJUSTMENT;
+}
+
 // Función principal
 int main(int argc, char *args[]) {
     SDL_Window *window = NULL;
@@ -266,17 +286,24 @@ int main(int argc, char *args[]) {
         movePokeball(&pokeball, screen_width, screen_height);
 
         // Paralelizar el bucle de movimiento de los Pokémon
-        #pragma omp parallel for
+        #pragma omp parallel for schedule(static)
         for (int i = 0; i < num_pokemon; i++) {
             if (!pokemon[i].isCaught && checkCollision(&pokeball, &pokemon[i])) {
                 #pragma omp critical
                 {
                     pokemon[i].isCaught = 1; // Atrapado
-                    generateRandomBackgroundColor(&bg_r, &bg_g, &bg_b);
+                    generateRandomBackgroundColor(&bg_r, &bg_g, &bg_b); 
                 }
             }
+
             movePokemon(&pokemon[i], screen_width, screen_height);
-            // Aquí no necesitamos renderizar en paralelo, lo haremos en el hilo principal
+
+            // Verificar colisiones con otros Pokémon
+            for (int j = i + 1; j < num_pokemon; j++) {
+                if (!pokemon[j].isCaught && checkPokemonCollision(&pokemon[i], &pokemon[j])) {
+                    handlePokemonCollision(&pokemon[i], &pokemon[j]);
+                }
+            }
         }
 
         // Renderizado en el hilo principal
