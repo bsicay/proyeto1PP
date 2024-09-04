@@ -65,44 +65,108 @@ SDL_Texture* loadTexture(const char *path, SDL_Renderer *renderer) {
 }
 
 // Función para mover un Pokémon en un ángulo
+// void movePokemon(Pokemon *pokemon, int screen_width, int screen_height) {
+//     // Calcula el nuevo desplazamiento
+//     pokemon->position.x += (int)(pokemon->speed * cos(pokemon->angle));
+//     pokemon->position.y += (int)(pokemon->speed * sin(pokemon->angle));
+
+//     // Detecta colisiones con los bordes
+//     if (pokemon->position.x <= 0) {
+//         pokemon->position.x = 1; // Mover ligeramente hacia dentro de la pantalla
+//         pokemon->angle = M_PI - pokemon->angle; // Rebote en el eje X
+//     } else if (pokemon->position.x + pokemon->position.w >= screen_width) {
+//         pokemon->position.x = screen_width - pokemon->position.w - 1;
+//         pokemon->angle = M_PI - pokemon->angle;
+//     }
+
+//     if (pokemon->position.y <= 0) {
+//         pokemon->position.y = 1;
+//         pokemon->angle = -pokemon->angle; // Rebote en el eje Y
+//     } else if (pokemon->position.y + pokemon->position.h >= screen_height) {
+//         pokemon->position.y = screen_height - pokemon->position.h - 1;
+//         pokemon->angle = -pokemon->angle;
+//     }
+
+//     // Solo ajustar si el ángulo está cerca de los ejes (0, 90, 180, 270 grados)
+//     if (fabs(fmod(pokemon->angle, M_PI / 2)) < 0.1) {
+//         float random_adjustment = ((float)rand() / RAND_MAX) * ANGLE_ADJUSTMENT - (ANGLE_ADJUSTMENT / 2);
+//         pokemon->angle += random_adjustment;
+//     }
+
+//     // Asegurar que el ángulo esté en el rango [0, 2π]
+//     if (pokemon->angle < 0) {
+//         pokemon->angle += 2 * M_PI;
+//     } else if (pokemon->angle >= 2 * M_PI) {
+//         pokemon->angle -= 2 * M_PI;
+//     }
+
+//     // Si la velocidad baja de MIN_SPEED, asignar una nueva velocidad aleatoria entre MIN_SPEED y MAX_SPEED
+//     if (pokemon->speed < MIN_SPEED) {
+//         pokemon->speed = (rand() % (MAX_SPEED - MIN_SPEED + 1)) + MIN_SPEED;
+//     }
+// }
 void movePokemon(Pokemon *pokemon, int screen_width, int screen_height) {
-    // Calcula el nuevo desplazamiento
-    pokemon->position.x += (int)(pokemon->speed * cos(pokemon->angle));
-    pokemon->position.y += (int)(pokemon->speed * sin(pokemon->angle));
+    #pragma omp parallel
+    {
+        // Mover la posición del Pokémon
+        #pragma omp sections
+        {
+            #pragma omp section
+            {
+                pokemon->position.x += (int)(pokemon->speed * cos(pokemon->angle));
+            }
+            #pragma omp section
+            {
+                pokemon->position.y += (int)(pokemon->speed * sin(pokemon->angle));
+            }
+        }
 
-    // Detecta colisiones con los bordes
-    if (pokemon->position.x <= 0) {
-        pokemon->position.x = 1; // Mover ligeramente hacia dentro de la pantalla
-        pokemon->angle = M_PI - pokemon->angle; // Rebote en el eje X
-    } else if (pokemon->position.x + pokemon->position.w >= screen_width) {
-        pokemon->position.x = screen_width - pokemon->position.w - 1;
-        pokemon->angle = M_PI - pokemon->angle;
-    }
+        // Detectar colisiones con los bordes
+        #pragma omp sections
+        {
+            #pragma omp section
+            {
+                if (pokemon->position.x <= 0) {
+                    pokemon->position.x = 1;
+                    pokemon->angle = M_PI - pokemon->angle;
+                } else if (pokemon->position.x + pokemon->position.w >= screen_width) {
+                    pokemon->position.x = screen_width - pokemon->position.w - 1;
+                    pokemon->angle = M_PI - pokemon->angle;
+                }
+            }
 
-    if (pokemon->position.y <= 0) {
-        pokemon->position.y = 1;
-        pokemon->angle = -pokemon->angle; // Rebote en el eje Y
-    } else if (pokemon->position.y + pokemon->position.h >= screen_height) {
-        pokemon->position.y = screen_height - pokemon->position.h - 1;
-        pokemon->angle = -pokemon->angle;
-    }
+            #pragma omp section
+            {
+                if (pokemon->position.y <= 0) {
+                    pokemon->position.y = 1;
+                    pokemon->angle = -pokemon->angle;
+                } else if (pokemon->position.y + pokemon->position.h >= screen_height) {
+                    pokemon->position.y = screen_height - pokemon->position.h - 1;
+                    pokemon->angle = -pokemon->angle;
+                }
+            }
+        }
 
-    // Solo ajustar si el ángulo está cerca de los ejes (0, 90, 180, 270 grados)
-    if (fabs(fmod(pokemon->angle, M_PI / 2)) < 0.1) {
-        float random_adjustment = ((float)rand() / RAND_MAX) * ANGLE_ADJUSTMENT - (ANGLE_ADJUSTMENT / 2);
-        pokemon->angle += random_adjustment;
-    }
+        // Asegurar que el ángulo no sea recto
+        #pragma omp single
+        {
+            if (fabs(fmod(pokemon->angle, M_PI / 2)) < 0.1) {
+                float random_adjustment = ((float)rand() / RAND_MAX) * ANGLE_ADJUSTMENT - (ANGLE_ADJUSTMENT / 2);
+                pokemon->angle += random_adjustment;
+            }
 
-    // Asegurar que el ángulo esté en el rango [0, 2π]
-    if (pokemon->angle < 0) {
-        pokemon->angle += 2 * M_PI;
-    } else if (pokemon->angle >= 2 * M_PI) {
-        pokemon->angle -= 2 * M_PI;
-    }
+            // Asegurar que el ángulo esté en el rango [0, 2π]
+            if (pokemon->angle < 0) {
+                pokemon->angle += 2 * M_PI;
+            } else if (pokemon->angle >= 2 * M_PI) {
+                pokemon->angle -= 2 * M_PI;
+            }
 
-    // Si la velocidad baja de MIN_SPEED, asignar una nueva velocidad aleatoria entre MIN_SPEED y MAX_SPEED
-    if (pokemon->speed < MIN_SPEED) {
-        pokemon->speed = (rand() % (MAX_SPEED - MIN_SPEED + 1)) + MIN_SPEED;
+            // Si la velocidad baja de MIN_SPEED, asignar una nueva velocidad aleatoria entre MIN_SPEED y MAX_SPEED
+            if (pokemon->speed < MIN_SPEED) {
+                pokemon->speed = (rand() % (MAX_SPEED - MIN_SPEED + 1)) + MIN_SPEED;
+            }
+        }
     }
 }
 
@@ -286,10 +350,8 @@ int main(int argc, char *args[]) {
         movePokeball(&pokeball, screen_width, screen_height);
 
         // Paralelizar el bucle de movimiento de los Pokémon
-        #pragma omp parallel for schedule(static)
         for (int i = 0; i < num_pokemon; i++) {
             if (!pokemon[i].isCaught && checkCollision(&pokeball, &pokemon[i])) {
-                #pragma omp critical
                 {
                     pokemon[i].isCaught = 1; // Atrapado
                     generateRandomBackgroundColor(&bg_r, &bg_g, &bg_b); 
