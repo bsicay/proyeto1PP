@@ -64,47 +64,6 @@ SDL_Texture* loadTexture(const char *path, SDL_Renderer *renderer) {
     return newTexture;
 }
 
-// Función para mover un Pokémon en un ángulo
-// void movePokemon(Pokemon *pokemon, int screen_width, int screen_height) {
-//     // Calcula el nuevo desplazamiento
-//     pokemon->position.x += (int)(pokemon->speed * cos(pokemon->angle));
-//     pokemon->position.y += (int)(pokemon->speed * sin(pokemon->angle));
-
-//     // Detecta colisiones con los bordes
-//     if (pokemon->position.x <= 0) {
-//         pokemon->position.x = 1; // Mover ligeramente hacia dentro de la pantalla
-//         pokemon->angle = M_PI - pokemon->angle; // Rebote en el eje X
-//     } else if (pokemon->position.x + pokemon->position.w >= screen_width) {
-//         pokemon->position.x = screen_width - pokemon->position.w - 1;
-//         pokemon->angle = M_PI - pokemon->angle;
-//     }
-
-//     if (pokemon->position.y <= 0) {
-//         pokemon->position.y = 1;
-//         pokemon->angle = -pokemon->angle; // Rebote en el eje Y
-//     } else if (pokemon->position.y + pokemon->position.h >= screen_height) {
-//         pokemon->position.y = screen_height - pokemon->position.h - 1;
-//         pokemon->angle = -pokemon->angle;
-//     }
-
-//     // Solo ajustar si el ángulo está cerca de los ejes (0, 90, 180, 270 grados)
-//     if (fabs(fmod(pokemon->angle, M_PI / 2)) < 0.1) {
-//         float random_adjustment = ((float)rand() / RAND_MAX) * ANGLE_ADJUSTMENT - (ANGLE_ADJUSTMENT / 2);
-//         pokemon->angle += random_adjustment;
-//     }
-
-//     // Asegurar que el ángulo esté en el rango [0, 2π]
-//     if (pokemon->angle < 0) {
-//         pokemon->angle += 2 * M_PI;
-//     } else if (pokemon->angle >= 2 * M_PI) {
-//         pokemon->angle -= 2 * M_PI;
-//     }
-
-//     // Si la velocidad baja de MIN_SPEED, asignar una nueva velocidad aleatoria entre MIN_SPEED y MAX_SPEED
-//     if (pokemon->speed < MIN_SPEED) {
-//         pokemon->speed = (rand() % (MAX_SPEED - MIN_SPEED + 1)) + MIN_SPEED;
-//     }
-// }
 void movePokemon(Pokemon *pokemon, int screen_width, int screen_height) {
     #pragma omp parallel
     {
@@ -234,15 +193,47 @@ int checkPokemonCollision(Pokemon *p1, Pokemon *p2) {
 }
 
 void handlePokemonCollision(Pokemon *p1, Pokemon *p2) {
-    // Intercambiar sus ángulos para simular un rebote simple
-    float tempAngle = p1->angle;
-    p1->angle = p2->angle;
-    p2->angle = tempAngle;
+    // Paralelizar el ajuste de ángulos y velocidades
+    #pragma omp parallel sections
+    {
+        #pragma omp section
+        {
+            // Intercambiar los ángulos de movimiento
+            float tempAngle = p1->angle;
+            p1->angle = p2->angle;
+            p2->angle = tempAngle;
+        }
 
-    // Opcionalmente, puedes agregar un pequeño ajuste aleatorio para evitar que se queden en la misma dirección
-    p1->angle += ((float)rand() / RAND_MAX - 0.5) * ANGLE_ADJUSTMENT;
-    p2->angle += ((float)rand() / RAND_MAX - 0.5) * ANGLE_ADJUSTMENT;
+        #pragma omp section
+        {
+            // Intercambio elástico de velocidades basado en las masas (suponiendo masas iguales)
+            float tempSpeed = p1->speed;
+            p1->speed = p2->speed;
+            p2->speed = tempSpeed;
+
+            // Ajustar las velocidades para que respeten MIN_SPEED y MAX_SPEED
+            if (p1->speed < MIN_SPEED) {
+                p1->speed = (rand() % (MAX_SPEED - MIN_SPEED + 1)) + MIN_SPEED;  // Nueva velocidad aleatoria
+            } else if (p1->speed > MAX_SPEED) {
+                p1->speed = MAX_SPEED;  // Limitar a MAX_SPEED
+            }
+
+            if (p2->speed < MIN_SPEED) {
+                p2->speed = (rand() % (MAX_SPEED - MIN_SPEED + 1)) + MIN_SPEED;  // Nueva velocidad aleatoria
+            } else if (p2->speed > MAX_SPEED) {
+                p2->speed = MAX_SPEED;  // Limitar a MAX_SPEED
+            }
+        }
+
+        #pragma omp section
+        {
+            // Agregar un pequeño ajuste aleatorio en los ángulos para evitar direcciones repetitivas
+            p1->angle += ((float)rand() / RAND_MAX - 0.5) * ANGLE_ADJUSTMENT;
+            p2->angle += ((float)rand() / RAND_MAX - 0.5) * ANGLE_ADJUSTMENT;
+        }
+    }
 }
+
 
 // Función principal
 int main(int argc, char *args[]) {

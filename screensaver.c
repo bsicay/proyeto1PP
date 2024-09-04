@@ -174,11 +174,28 @@ void handlePokemonCollision(Pokemon *p1, Pokemon *p2) {
     p1->angle = p2->angle;
     p2->angle = tempAngle;
 
-    // Opcionalmente, puedes agregar un pequeño ajuste aleatorio para evitar que se queden en la misma dirección
+    // Intercambio elástico de velocidades basado en las masas (suponiendo masas iguales)
+    float tempSpeed = p1->speed;
+    p1->speed = p2->speed;
+    p2->speed = tempSpeed;
+
+    // Ajustar la velocidad para que no caiga por debajo de MIN_SPEED o supere MAX_SPEED
+    if (p1->speed < MIN_SPEED) {
+        p1->speed = (rand() % (MAX_SPEED - MIN_SPEED + 1)) + MIN_SPEED;  // Nueva velocidad random si es menor a MIN_SPEED
+    } else if (p1->speed > MAX_SPEED) {
+        p1->speed = MAX_SPEED;  // Limitar a MAX_SPEED
+    }
+
+    if (p2->speed < MIN_SPEED) {
+        p2->speed = (rand() % (MAX_SPEED - MIN_SPEED + 1)) + MIN_SPEED;  // Nueva velocidad random si es menor a MIN_SPEED
+    } else if (p2->speed > MAX_SPEED) {
+        p2->speed = MAX_SPEED;  // Limitar a MAX_SPEED
+    }
+
+    // Agregar un ajuste aleatorio en el ángulo para evitar direcciones repetitivas
     p1->angle += ((float)rand() / RAND_MAX - 0.5) * ANGLE_ADJUSTMENT;
     p2->angle += ((float)rand() / RAND_MAX - 0.5) * ANGLE_ADJUSTMENT;
 }
-
 
 // Función principal
 int main(int argc, char *args[]) {
