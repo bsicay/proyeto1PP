@@ -6,7 +6,6 @@ Este proyecto simula el movimiento de sprites (Pokémones y Pokebola) rebotando 
 
 
 #### Requisitos:
-- ![Uploading pokeball-pokemon-svgrepo-com.svg…]()
 SDL2
 - SDL2_image
 - SDL2_ttf
