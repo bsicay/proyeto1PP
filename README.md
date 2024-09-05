@@ -1,10 +1,13 @@
 ### Proyecto #1 Paralela
 
-#### Descripción del Proyecto: 
+#### <img src="https://art.ngfiles.com/images/386000/386577_stardoge_8-bit-pokeball.png?f1446737358" alt="Pokeball" width="50" height="50" style="vertical-align: middle;"> Descripción del Proyecto:  
+
 Este proyecto simula el movimiento de sprites (Pokémones y Pokebola) rebotando dentro de una ventana utilizando la biblioteca SDL2. Se implementa tanto una versión serial como una versión paralela usando OpenMP para comparar el rendimiento de ambas versiones. El movimiento de los sprites se paraleliza para aprovechar múltiples núcleos y mejorar la eficiencia en la ejecución.
 
+
 #### Requisitos:
-- SDL2
+- ![Uploading pokeball-pokemon-svgrepo-com.svg…]()
+SDL2
 - SDL2_image
 - SDL2_ttf
 - OpenMP (para la versión paralela)
