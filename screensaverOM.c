@@ -193,47 +193,33 @@ int checkPokemonCollision(Pokemon *p1, Pokemon *p2) {
 }
 
 void handlePokemonCollision(Pokemon *p1, Pokemon *p2) {
-    // Paralelizar el ajuste de ángulos y velocidades
-    #pragma omp parallel sections
-    {
-        #pragma omp section
-        {
-            // Intercambiar los ángulos de movimiento
-            float tempAngle = p1->angle;
-            p1->angle = p2->angle;
-            p2->angle = tempAngle;
-        }
+    // Intercambiar sus ángulos para simular un rebote simple
+    float tempAngle = p1->angle;
+    p1->angle = p2->angle;
+    p2->angle = tempAngle;
 
-        #pragma omp section
-        {
-            // Intercambio elástico de velocidades basado en las masas (suponiendo masas iguales)
-            float tempSpeed = p1->speed;
-            p1->speed = p2->speed;
-            p2->speed = tempSpeed;
+    // Intercambio elástico de velocidades basado en las masas (suponiendo masas iguales)
+    float tempSpeed = p1->speed;
+    p1->speed = p2->speed;
+    p2->speed = tempSpeed;
 
-            // Ajustar las velocidades para que respeten MIN_SPEED y MAX_SPEED
-            if (p1->speed < MIN_SPEED) {
-                p1->speed = (rand() % (MAX_SPEED - MIN_SPEED + 1)) + MIN_SPEED;  // Nueva velocidad aleatoria
-            } else if (p1->speed > MAX_SPEED) {
-                p1->speed = MAX_SPEED;  // Limitar a MAX_SPEED
-            }
-
-            if (p2->speed < MIN_SPEED) {
-                p2->speed = (rand() % (MAX_SPEED - MIN_SPEED + 1)) + MIN_SPEED;  // Nueva velocidad aleatoria
-            } else if (p2->speed > MAX_SPEED) {
-                p2->speed = MAX_SPEED;  // Limitar a MAX_SPEED
-            }
-        }
-
-        #pragma omp section
-        {
-            // Agregar un pequeño ajuste aleatorio en los ángulos para evitar direcciones repetitivas
-            p1->angle += ((float)rand() / RAND_MAX - 0.5) * ANGLE_ADJUSTMENT;
-            p2->angle += ((float)rand() / RAND_MAX - 0.5) * ANGLE_ADJUSTMENT;
-        }
+    // Ajustar la velocidad para que no caiga por debajo de MIN_SPEED o supere MAX_SPEED
+    if (p1->speed < MIN_SPEED) {
+        p1->speed = (rand() % (MAX_SPEED - MIN_SPEED + 1)) + MIN_SPEED;  // Nueva velocidad random si es menor a MIN_SPEED
+    } else if (p1->speed > MAX_SPEED) {
+        p1->speed = MAX_SPEED;  // Limitar a MAX_SPEED
     }
-}
 
+    if (p2->speed < MIN_SPEED) {
+        p2->speed = (rand() % (MAX_SPEED - MIN_SPEED + 1)) + MIN_SPEED;  // Nueva velocidad random si es menor a MIN_SPEED
+    } else if (p2->speed > MAX_SPEED) {
+        p2->speed = MAX_SPEED;  // Limitar a MAX_SPEED
+    }
+
+    // Agregar un ajuste aleatorio en el ángulo para evitar direcciones repetitivas
+    p1->angle += ((float)rand() / RAND_MAX - 0.5) * ANGLE_ADJUSTMENT;
+    p2->angle += ((float)rand() / RAND_MAX - 0.5) * ANGLE_ADJUSTMENT;
+}
 
 // Función principal
 int main(int argc, char *args[]) {
