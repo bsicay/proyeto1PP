@@ -14,18 +14,23 @@ SDL2
 #### Comandos para Compilar y Ejecutar:
 
 *Versión Serial:*
-bash
+```bash
 gcc -o screensaver screensaver.c -lSDL2 -lSDL2_image -lSDL2_ttf -lm
 ./screensaver [número_de_sprites]
+```
 
 *Versión Paralela (con OpenMP)*
-bash
+```bash
 gcc -o screensaverOM screensaver.c -lSDL2 -lSDL2_image -lSDL2_ttf -lm -fopenmp
 ./screensaverOM [número_de_sprites]
+```
 
 *Ejemplos de ejecución*
-bash
-./screensaver 250
 
-bash
+```bash
+./screensaver 250
+```
+
+```bash
 ./screensaverOM 250
+```
